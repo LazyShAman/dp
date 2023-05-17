@@ -185,16 +185,16 @@ public class Main {
 
     /**
      * Метод encodeByte внедряет в байтовое представление BMP-изображения байт
-     * шифруемого сообщения, меняя наименьший значащий бит каждого байта пикселей
+     * шифруемого сообщения, меняя наименее значимый бит каждого пикселя
      * @param offset позиция шифрования
      * @param imageBytes массив байтов BMP-изображения
      * @param messageByte байт шифруемого сообщения
      */
     public static void encodeByte(int offset, byte[] imageBytes, byte messageByte) {
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 16; i++) {
             int bit = (messageByte >>> i) & 1;
-            int imageByteIndex = imageOffset + (offset * 8) + i;
-            imageBytes[imageByteIndex] = (byte) ((imageBytes[imageByteIndex] & 0xFE) | bit);
+            int imageByteIndex = imageOffset + (offset * 16) + i;
+            imageBytes[imageByteIndex] = (byte) ((imageBytes[imageByteIndex] & 0xFFFE) | bit);
         }
     }
 
@@ -207,8 +207,8 @@ public class Main {
      */
     public static byte decodeByte(int offset, byte[] imageBytes) {
         byte messageByte = 0;
-        for (int i = 0; i < 8; i++) {
-            int imageByteIndex = imageOffset + (offset * 8) + i;
+        for (int i = 0; i < 16; i++) {
+            int imageByteIndex = imageOffset + (offset * 16) + i;
             int bit = imageBytes[imageByteIndex] & 1;
             messageByte |= bit << i;
         }

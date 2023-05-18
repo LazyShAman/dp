@@ -13,17 +13,18 @@ public class Main {
         String inputFileName = "tux.bmp";
         byte[] imageData;
         byte[] header;
-        byte[] encryptedData;
+        int headerLength = 110;
 
         try {
             // Чтение входного файла изображения
             imageData = Files.readAllBytes(new File(inputFileName).toPath());
-            header = new byte[54]; // Assuming BMP header size is 54 bytes
-            System.arraycopy(imageData, 0, header, 0, 54);
+            header = new byte[headerLength];
+            System.arraycopy(imageData, 0, header, 0, headerLength);
 
             // Разделение данных заголовка и изображения
-            byte[] imageDataWithoutHeader = new byte[imageData.length - 54];
-            System.arraycopy(imageData, 54, imageDataWithoutHeader, 0, imageData.length - 54);
+            byte[] imageDataWithoutHeader = new byte[imageData.length - headerLength];
+            System.arraycopy(imageData, headerLength, imageDataWithoutHeader, 0,
+                        imageData.length - headerLength);
 
             // Сохранение изображения без заголовка в новый файл
             FileOutputStream outputStream = new FileOutputStream("tux_without_header.bmp");
@@ -43,7 +44,9 @@ public class Main {
     }
 
     /**
-     * Метод, который шифрует и сохраняет данные изображения с использованием указанного режима шифрования.
+     * Метод encryptAndSaveData шифрует и сохраняет данные изображения
+     * с использованием указанного режима шифрования.
+     *
      * @param imageData данные изображения без заголовка
      * @param header    заголовок изображения
      * @param encryptionMode режим шифрования (ECB, CBC, CFB или OFB)
@@ -75,7 +78,8 @@ public class Main {
 
             System.out.println("Image encrypted and saved: " + outputFileName);
 
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException | IOException e) {
+        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException |
+                 IllegalBlockSizeException | BadPaddingException | IOException e) {
             e.printStackTrace();
         }
     }

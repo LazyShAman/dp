@@ -35,7 +35,7 @@ public class Main {
                 }
             }
 
-            for (int i = 1; i <= Math.pow(2, 10); i++) {
+            for (int i = 1; i <= Math.pow(2, 14); i++) {
                 createFile(i);
             }
 

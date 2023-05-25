@@ -16,6 +16,13 @@ public class Main {
         try {
             fileContent = Files.readString(Paths.get("leasing.txt"));
             generateSHA1("leasing.txt");
+            fileContent = Files.readString(Paths.get("leasing1.txt"));
+            generateSHA1("leasing1.txt");
+
+            if (compareList.get(0).equals(compareList.get(1))) {
+                System.out.println("File leasing.txt equals leasing1.txt by SHA1 hash code.");
+            }
+
             int count = 0;
             int k = 0;
             for (int i = 0; i < fileContent.length(); i++) {

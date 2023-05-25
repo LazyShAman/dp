@@ -1,86 +1,106 @@
-import javax.crypto.*;
 import java.io.*;
 import java.nio.file.Files;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+import java.nio.file.Path;
 
-/**
- * Программа, предназначенная для шифрования изображения
- * с использованием различных режимов шифрования AES.
- */
 public class Main {
+    /**
+     * Выполняет чтение изображения, извлечение заголовка, сохранение
+     * заголовка и беззаголовочных данных, а также шифрование и сохранение
+     * данных с использованием различных режимов шифрования.
+     *
+     * @param args Аргументы командной строки.
+     */
     public static void main(String[] args) {
+        // Имя входного файла изображения
         String inputFileName = "tux.bmp";
         byte[] imageData;
         byte[] header;
         int headerLength = 110;
-
         try {
-            // Чтение входного файла изображения
-            imageData = Files.readAllBytes(new File(inputFileName).toPath());
+            // Чтение всех байтов изображения
+            imageData = Files.readAllBytes(Path.of(inputFileName));
+            // Извлечение заголовка
             header = new byte[headerLength];
             System.arraycopy(imageData, 0, header, 0, headerLength);
 
-            // Разделение данных заголовка и изображения
+            // Извлечение данных без заголовка
             byte[] imageDataWithoutHeader = new byte[imageData.length - headerLength];
-            System.arraycopy(imageData, headerLength, imageDataWithoutHeader, 0,
-                        imageData.length - headerLength);
+            System.arraycopy(imageData, headerLength, imageDataWithoutHeader,
+                    0, imageData.length - headerLength);
 
-            // Сохранение изображения без заголовка в новый файл
-            FileOutputStream outputStream = new FileOutputStream("tux_without_header.bmp");
-            outputStream.write(imageDataWithoutHeader);
+            // Сохранение заголовка в отдельный файл
+            FileOutputStream outputStream = new FileOutputStream("tux_header.bin");
+            outputStream.write(header);
             outputStream.close();
 
-            // Шифрование и сохранение данных изображения
-            // с помощью различных режимов шифрования AES
-            encryptAndSaveData(imageDataWithoutHeader, header, "ECB");
-            encryptAndSaveData(imageDataWithoutHeader, header, "CBC");
-            encryptAndSaveData(imageDataWithoutHeader, header, "CFB");
-            encryptAndSaveData(imageDataWithoutHeader, header, "OFB");
+            // Сохранение данных без заголовка в отдельный файл
+            FileOutputStream outputStreamWithoutHeader = new FileOutputStream("tux_without_header.bmp");
+            outputStreamWithoutHeader.write(imageDataWithoutHeader);
+            outputStreamWithoutHeader.close();
 
+            // Шифрование и сохранение данных с использованием различных режимов шифрования
+            encryptAndSaveData(header, "ecb");
+            encryptAndSaveData(header, "cbc");
+            encryptAndSaveData(header, "cfb");
+            encryptAndSaveData(header, "ofb");
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     /**
-     * Метод encryptAndSaveData шифрует и сохраняет данные изображения
-     * с использованием указанного режима шифрования.
+     * Метод encryptAndSaveData выполняет шифрование и сохранение данных.
      *
-     * @param imageData данные изображения без заголовка
-     * @param header    заголовок изображения
-     * @param encryptionMode режим шифрования (ECB, CBC, CFB или OFB)
+     * @param header         Заголовок данных.
+     * @param encryptionMode Режим шифрования.
+     * @throws IOException Если возникают проблемы с вводом-выводом.
      */
-    public static void encryptAndSaveData(byte[] imageData, byte[] header, String encryptionMode) {
+    public static void encryptAndSaveData(byte[] header, String encryptionMode) throws IOException {
+        // Путь к файлу ключа шифрования
+        String keyPath = "key.bin";
+        // Путь к исходному файлу изображения без заголовка
+        String tuxWithoutHeaderPath = "tux_without_header.bmp";
+        // Путь к зашифрованному файлу изображения
+        String tuxEncryptedPath = "tux_" + encryptionMode + ".bmp";
+
+        // Генерация ключа шифрования
+        ProcessBuilder keyGenProcessBuilder = new ProcessBuilder("openssl", "rand", "-hex", "16");
+        keyGenProcessBuilder.redirectOutput(ProcessBuilder.Redirect.to(new File(keyPath)));
+        Process keyGenProcess = keyGenProcessBuilder.start();
         try {
-            // Генерация AES ключа
-            KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
-            keyGenerator.init(128);
-            SecretKey secretKey = keyGenerator.generateKey();
-
-            // Инициализация шифра с ключом AES и режимом шифрования
-            Cipher cipher = Cipher.getInstance("AES/" + encryptionMode + "/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-
-            // Шифрование данных изображения
-            byte[] encryptedData = cipher.doFinal(imageData);
-
-            // Объединение заголовка и зашифрованных данных изображения
-            byte[] encryptedImage = new byte[header.length + encryptedData.length];
-            System.arraycopy(header, 0, encryptedImage, 0, header.length);
-            System.arraycopy(encryptedData, 0, encryptedImage, header.length, encryptedData.length);
-
-            // Сохранение зашифрованного изображения в новый файл
-            String outputFileName = "tux" + encryptionMode + "_encrypted.bmp";
-            FileOutputStream outputStream = new FileOutputStream(outputFileName);
-            outputStream.write(encryptedImage);
-            outputStream.close();
-
-            System.out.println("Image encrypted and saved: " + outputFileName);
-
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException |
-                 IllegalBlockSizeException | BadPaddingException | IOException e) {
+            keyGenProcess.waitFor();
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+        // Шифрование данных изображения без заголовка
+        ProcessBuilder encryptionProcessBuilder = new ProcessBuilder("openssl", "enc",
+                "-aes-256-" + encryptionMode,
+                "-in", tuxWithoutHeaderPath,
+                "-out", tuxEncryptedPath,
+                "-pass", "file:key.bin");
+
+        encryptionProcessBuilder.redirectErrorStream(true);
+        Process encryptionProcess = encryptionProcessBuilder.start();
+        try {
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(encryptionProcess.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+            encryptionProcess.waitFor();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // Чтение зашифрованных данных
+        byte[] encryptedImageData = Files.readAllBytes(Path.of(tuxEncryptedPath));
+
+        // Создание выходного файла и запись заголовка + зашифрованных данных
+        FileOutputStream outputStream = new FileOutputStream(tuxEncryptedPath);
+        outputStream.write(header);
+        outputStream.write(encryptedImageData);
+        outputStream.close();
     }
 }

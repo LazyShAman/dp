@@ -1,4 +1,6 @@
-import java.io.*;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -51,10 +53,6 @@ public class RegistrarBServer {
             e.printStackTrace();
         }
         return null;
-    }
-
-    private BigInteger createBlindedSignature(BigInteger privateExp, BigInteger privateMod, BigInteger blindMessage) {
-        return blindMessage.modPow(privateExp, privateMod);
     }
 
     private void sendComponents(Socket socket) throws IOException {
@@ -125,6 +123,10 @@ public class RegistrarBServer {
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
 
         return keyFactory.generatePublic(keySpec);
+    }
+
+    private BigInteger createBlindedSignature(BigInteger privateExp, BigInteger privateMod, BigInteger blindMessage) {
+        return blindMessage.modPow(privateExp, privateMod);
     }
 
     private static void executeCommand(ProcessBuilder processBuilder) throws IOException {

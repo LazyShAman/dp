@@ -62,12 +62,12 @@ public class VoterAClient {
     private BigInteger[] blindMessage(byte[] message, BigInteger exp, BigInteger mod) {
         BigInteger messageInt = new BigInteger(1, message);
 
-        // Generate a random blinding factor
+        // Генерирует затемняющий фактор (случайное число)
         BigInteger r = generateRandomBlindingFactor(mod);
         // Blinded message = (message * r^e) mod n
         BigInteger blindedMessageInt = messageInt.multiply(r.modPow(exp, mod)).mod(mod);
 
-        // Return the blinded message and blinding factor
+        // Возвращает затемненное сообщение и затемняющий фактор
         return new BigInteger[]{blindedMessageInt, r};
     }
 

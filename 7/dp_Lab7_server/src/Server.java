@@ -6,12 +6,23 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 
+/**
+ * Класс, представляющий серверную часть приложения.
+ * Сервер принимает подключение клиентов и обрабатывает их запросы.
+ * Также сервер генерирует ключевые пары и сертификаты для корневого и промежуточного Удостоверяющих Центров (УЦ),
+ * а также подписывает листовые сертификаты клиентов.
+ */
 public class Server {
     private static final int PORT = 8888;
     private final HashMap<String, Socket> connectedClients;
     private static String rootCert;
     private static String intermediateCert;
 
+    /**
+     * Конструктор класса Server.
+     *
+     * @throws IOException если возникают проблемы при генерации ключевой пары и сертификатов
+     */
     public Server() throws IOException {
         connectedClients = new HashMap<>();
         generateRootKeyPair();
@@ -19,6 +30,11 @@ public class Server {
         releaseSignedRootCert();
     }
 
+    /**
+     * Запускает сервер на указанном порту.
+     *
+     * @param serverPort порт сервера
+     */
     public void start(int serverPort) {
         try {
             ServerSocket serverSocket = new ServerSocket(serverPort);
@@ -44,6 +60,9 @@ public class Server {
         }
     }
 
+    /**
+     * Внутренний класс для обработки клиентов в отдельных потоках.
+     */
     private class ClientHandler implements Runnable {
         private final Socket socket;
         private final String clientName;
@@ -64,6 +83,14 @@ public class Server {
         }
     }
 
+    /**
+     * Обрабатывает клиента и выполняет необходимые операции с сертификатами.
+     *
+     * @param socket     объект Socket для обмена данными с клиентом
+     * @param clientName имя клиента
+     * @throws IOException            если возникают проблемы при обмене данными
+     * @throws ClassNotFoundException если класс сертификатов не найден
+     */
     private void handleClient(Socket socket, String clientName) throws IOException, ClassNotFoundException {
         int clientHash = clientName.hashCode();
 
@@ -83,13 +110,27 @@ public class Server {
         }
     }
 
-
+    /**
+     * Получает сертификат (CSR) для листового сертификата от клиента.
+     *
+     * @param socket объект Socket для обмена данными с клиентом
+     * @return сертификат (CSR) в виде строки
+     * @throws IOException            если возникают проблемы при обмене данными
+     * @throws ClassNotFoundException если класс сертификата не найден
+     */
     private String receiveLeafCSR(Socket socket) throws IOException, ClassNotFoundException {
         // Получение сертификата (CSR) для листового сертификата
         ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
         return (String) inputStream.readObject();
     }
 
+    /**
+     * Отправляет набор сертификатов клиенту для верификации.
+     *
+     * @param socket    объект Socket для обмена данными с клиентом
+     * @param leafCert  сертификат листового узла
+     * @throws IOException если возникают проблемы при обмене данными
+     */
     private void sendCertPack(Socket socket, String leafCert) throws IOException {
         // Отправка набора сертификатов клиенту для верификации
         ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
@@ -100,6 +141,11 @@ public class Server {
         outputStream.writeObject(certs);
     }
 
+    /**
+     * Генерирует пару ключей для корневого УЦ.
+     *
+     * @throws IOException если возникают проблемы при выполнении команды
+     */
     private static void generateRootKeyPair() throws IOException {
         // Генерация ключевой пары корневого УЦ
         ProcessBuilder builder = new ProcessBuilder("openssl",
@@ -107,6 +153,11 @@ public class Server {
         executeCommand(builder);
     }
 
+    /**
+     * Создает запрос на сертификат (CSR) для корневого УЦ.
+     *
+     * @throws IOException если возникают проблемы при выполнении команды
+     */
     private static void generateRootCSR() throws IOException {
         // Создание запроса на сертификат (CSR) для корневого УЦ
         ProcessBuilder builder = new ProcessBuilder("openssl",
@@ -116,6 +167,11 @@ public class Server {
         executeCommand(builder);
     }
 
+    /**
+     * Подписывает сертификат корневым УЦ.
+     *
+     * @throws IOException если возникают проблемы при выполнении команды
+     */
     private static void releaseSignedRootCert() throws IOException {
         // Подписание сертификата корневым УЦ
         ProcessBuilder builder = new ProcessBuilder("openssl",
@@ -127,6 +183,11 @@ public class Server {
         rootCert = convertPEMFileToString("root_cert.pem");
     }
 
+    /**
+     * Генерирует пару ключей для промежуточного УЦ.
+     *
+     * @throws IOException если возникают проблемы при выполнении команды
+     */
     private static void generateIntermediateKeyPair() throws IOException {
         // Генерация ключевой пары промежуточного УЦ
         ProcessBuilder builder = new ProcessBuilder("openssl",
@@ -134,6 +195,11 @@ public class Server {
         executeCommand(builder);
     }
 
+    /**
+     * Создает запрос на сертификат (CSR) для промежуточного УЦ.
+     *
+     * @throws IOException если возникают проблемы при выполнении команды
+     */
     private static void generateIntermediateCSR() throws IOException {
         // Создание запроса на сертификат (CSR) для промежуточного УЦ
         ProcessBuilder builder = new ProcessBuilder("openssl",
@@ -143,6 +209,11 @@ public class Server {
         executeCommand(builder);
     }
 
+    /**
+     * Подписывает промежуточный сертификат корневым УЦ.
+     *
+     * @throws IOException если возникают проблемы при выполнении команды
+     */
     private static void releaseSignedIntermediateCert() throws IOException {
         // Подписание промежуточного сертификата корневым УЦ
         ProcessBuilder builder = new ProcessBuilder("openssl",
@@ -154,6 +225,14 @@ public class Server {
         intermediateCert = convertPEMFileToString("intermediate_cert.pem");
     }
 
+    /**
+     * Подписывает листовой сертификат промежуточным УЦ.
+     *
+     * @param leafCSR CSR (Certificate Signing Request) листового сертификата
+     * @param clientHash хеш клиента
+     * @return подписанный листовой сертификат в виде строки
+     * @throws IOException если возникают проблемы при выполнении команды
+     */
     private static String releaseSignedLeafCert(String leafCSR, int clientHash) throws IOException {
         String leafCSRFile = "leaf_csr_" + clientHash + ".pem";
         convertStringToPEMFile(leafCSR, leafCSRFile);
@@ -170,6 +249,12 @@ public class Server {
         return convertPEMFileToString(leafCertFile);
     }
 
+    /**
+     * Выполняет openssl команду в системной оболочке.
+     *
+     * @param processBuilder объект ProcessBuilder для выполнения команды
+     * @throws IOException если возникают проблемы при выполнении команды
+     */
     private static void executeCommand(ProcessBuilder processBuilder) throws IOException {
         processBuilder.redirectErrorStream(true);
         Process process = processBuilder.start();
@@ -180,6 +265,12 @@ public class Server {
         }
     }
 
+    /**
+     * Преобразует содержимое файла PEM в строку.
+     *
+     * @param filePath путь к файлу PEM
+     * @return содержимое файла PEM в виде строки
+     */
     private static String convertPEMFileToString(String filePath) {
         try {
             List<String> lines = Files.readAllLines(Paths.get(filePath));
@@ -190,6 +281,12 @@ public class Server {
         return "";
     }
 
+    /**
+     * Записывает строку в файл PEM.
+     *
+     * @param pemString содержимое в формате PEM
+     * @param filePath  путь к файлу PEM
+     */
     private static void convertStringToPEMFile(String pemString, String filePath) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
             writer.write(pemString);
@@ -198,6 +295,12 @@ public class Server {
         }
     }
 
+    /**
+     * Точка входа в приложение сервера.
+     *
+     * @param args аргументы командной строки (не используются)
+     * @throws IOException если возникают проблемы при запуске сервера
+     */
     public static void main(String[] args) throws IOException {
         Server server = new Server();
         server.start(PORT);

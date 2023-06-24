@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="dp_Lab7_client-server_app:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/dp_Lab7_client_server_app_jar</output-path>
+    <root id="archive" name="dp_Lab7_client-server_app.jar">
+      <element id="module-output" name="dp_Lab7_client-server_app" />
+    </root>
+  </artifact>
+</component>
